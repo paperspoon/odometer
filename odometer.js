@@ -14,7 +14,7 @@
 
   FORMAT_PARSER = /^\(?([^)]*)\)?(?:(.)(d+))?$/;
 
-  FRAMERATE = 1;
+  FRAMERATE = 30;
 
   DURATION = 2000;
 
@@ -144,7 +144,8 @@
       if ((_base = this.options).duration == null) {
         _base.duration = DURATION;
       }
-      this.MAX_VALUES = ((this.options.duration / MS_PER_FRAME) / FRAMES_PER_VALUE) | 0;
+      var msPerFrame = this.options.framerate ? 1000 / this.options.framerate : MS_PER_FRAME; 
+      this.MAX_VALUES = ((this.options.duration / msPerFrame) / FRAMES_PER_VALUE) | 0;
       this.resetFormat();
       this.value = this.cleanValue((_ref1 = this.options.value) != null ? _ref1 : '');
       this.renderInside();
@@ -336,7 +337,7 @@
         }
       } else {
         wholePart = !this.format.precision || !fractionalPart(value) || false;
-        _ref1 = value.toString().split('').reverse();
+        _ref1 = value.toFixed(this.format.precision).toString().split('').reverse();
         for (_j = 0, _len1 = _ref1.length; _j < _len1; _j++) {
           digit = _ref1[_j];
           if (digit === '.') {
@@ -443,6 +444,7 @@
       if (!(diff = +newValue - this.value)) {
         return;
       }
+      var countMsPerFrame = _this.options.framerate ? 1000 / _this.options.framerate : COUNT_MS_PER_FRAME;
       start = last = now();
       cur = this.value;
       return (tick = function() {
@@ -454,17 +456,17 @@
           return;
         }
         delta = now() - last;
-        if (delta > COUNT_MS_PER_FRAME) {
+        if (delta > countMsPerFrame) {
           last = now();
           fraction = delta / _this.options.duration;
           dist = diff * fraction;
           cur += dist;
-          _this.render(Math.round(cur));
+          _this.render(cur);
         }
         if (requestAnimationFrame != null) {
           return requestAnimationFrame(tick);
         } else {
-          return setTimeout(tick, COUNT_MS_PER_FRAME);
+          return setTimeout(tick, countMsPerFrame);
         }
       })();
     };
@@ -508,6 +510,14 @@
       var boosted, cur, diff, digitCount, digits, dist, end, fractionalCount, frame, frames, i, incr, j, mark, numEl, oldValue, start, _base, _i, _j, _k, _l, _len, _len1, _len2, _m, _ref, _results;
       oldValue = this.value;
       fractionalCount = this.getFractionalDigitCount(oldValue, newValue);
+      /**
+       * todo 기존에 구조가 newValue를 reassign 해서 쓰는 구조라 임시값 맹금
+       */
+      var originalValue = {
+      	new: newValue,
+        old: this.value
+      }
+
       if (fractionalCount) {
         newValue = newValue * Math.pow(10, fractionalCount);
         oldValue = oldValue * Math.pow(10, fractionalCount);
@@ -517,6 +527,9 @@
       }
       this.bindTransitionEnd();
       digitCount = this.getDigitCount(oldValue, newValue);
+      if (fractionalCount > 0 && Math.abs(originalValue.new) < 1 && Math.abs(originalValue.old < 1)) {
+      	digitCount += 1;
+      }
       digits = [];
       boosted = 0;
       for (i = _i = 0; 0 <= digitCount ? _i < digitCount : _i > digitCount; i = 0 <= digitCount ? ++_i : --_i) {
